@@ -1,21 +1,22 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <math.h>
 
-#include "mpi.h"
+#include <mpi.h>
 
 struct tuple {
 	int key;	// integer key
 	val value;	// some k-byte type val
 };
 
-int comparator(void *a, void *b) {
+int comparator(const void *a, const void *b) {
 	struct tuple *c = (struct tuple *) a;
 	struct tuple *d = (struct tuple *) b;
 	return c->key - d->key;
 }
 
-int main(int argc, char *argv) {
+int main(int argc, char *argv[]) {
 	// get rank and size in MPI grid
 	int rank, size; 
 	MPI_Init(&argc, &argv); 
@@ -23,7 +24,7 @@ int main(int argc, char *argv) {
 	MPI_Comm_size(MPI_COMM_WORLD, &size); 
 	
 	//each process has an array of tuples (how it reads it is omitted)
-	int numtuples = ...
+	int numtuples = ... 
 	struct tuple *arr = ...
 
 	// get counts for each key process has
@@ -34,7 +35,7 @@ int main(int argc, char *argv) {
 	}
 	
 	// sort array arr based on tuple key using library qsort
-	qsort(arr, numtuples, sizeof(struct tuple), comparator);
+	qsort(arr, numtuples, sizeof(struct tuple), &comparator);
 	
 	// calculate starting position in arr by calculating prefix sum of local keycounts
 	int *startingposition = (int *) malloc(sizeof(int) * size);
@@ -60,7 +61,7 @@ int main(int argc, char *argv) {
 	// put tuples to their appropriate windows
 	MPI_Win_fence(0, win);	// fence to ensure completion of MPI_Put
 	for (int i = 0; i < size; i++) {
-		MPI_Put(&arr[startingposition[i]], sizeof(struct tuple) * keycounts[i], MPI_Byte, i, recvcounts[i], sizeof(struct tuple) * keycounts[i], MPI_Byte, win);
+		MPI_Put(&arr[startingposition[i]], sizeof(struct tuple) * keycounts[i], MPI_BYTE, i, recvcounts[i], sizeof(struct tuple) * keycounts[i], MPI_BYTE, win);
 	}
 	MPI_Win_fence(0, win);
 	

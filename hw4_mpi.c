@@ -1,11 +1,12 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <math.h>
 
-#include "mpi.h"
+#include <mpi.h>
 
 
-int main(int argc, char *argv) {
+int main(int argc, char *argv[]) {
 	// get rank and size in MPI grid
 	int rank, size; 
 	MPI_Init(&argc, &argv); 
@@ -18,17 +19,17 @@ int main(int argc, char *argv) {
 	// process 0 reads data
 	if (rank == 0) {
 		//READ DATA
-		N = ...
-		data = ...
-		submatrixsize = N/P;
+		N = ...;
+		data = ...;
+		submatrixsize = N/size;
 	}
 	
 	// broadcast submatrix size to all processes
-	int MPI_Bcast(&submatrixsize, 1, MPI_Int, 0, MPI_COMM_WORLD);
+	MPI_Bcast(&submatrixsize, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
 	//use mpi scatter to scatter data from process 0 to remaining processes
 	int *submatrix = (int *) malloc(sizeof(int) * submatrixsize * submatrixsize);
-	MPI_Scatter(data, submatrixsize*submatrixsize, MPI_Int, submatrix, submatrixsize*submatrixsize, MPI_Int, 0, MPI_COMM_WORLD);
+	MPI_Scatter(data, submatrixsize*submatrixsize, MPI_INT, submatrix, submatrixsize*submatrixsize, MPI_INT, 0, MPI_COMM_WORLD);
 		
 	// Change communicator to 2-d grid
 	int dimSize[2] = {0, 0};
@@ -40,7 +41,7 @@ int main(int argc, char *argv) {
 	
 	// get my processors coordinates in the grid
 	int myRow, myCol;
-	MPI_Cart_coords(comm2D, myRank, 2, myCoords);
+	MPI_Cart_coords(comm2D, rank, 2, myCoords);
 	myRow = myCoords[0]; myCol = myCoords[1];
 	
 	// split comm2D into row and column communicators
@@ -58,7 +59,7 @@ int main(int argc, char *argv) {
 	
 	// prefix sum across column processes
 	int *previouscolumnsum = (int *) malloc(sizeof(int) * submatrixsize);
-	MPI_Exscan(&submatrix[(submatrixsize-1)*submatrixsize], previouscolumnsum, submatrixsize, MPI_Int, MPI_Sum, commC);
+	MPI_Exscan(&submatrix[(submatrixsize-1)*submatrixsize], previouscolumnsum, submatrixsize, MPI_INT, MPI_SUM, commC);
 	
 	// add previous column sum to local submatrix
 	if (myRow > 0) {
@@ -82,11 +83,11 @@ int main(int argc, char *argv) {
 	for (int i = 0; i < submatrixsize; i++) {
 		mylocalrowsum[i] = submatrix[i * submatrixsize + (submatrixsize-1)];
 	}
-	MPI_Exscan(mylocalrowsum, previousrowsum, submatrixsize, MPI_Int, MPI_Sum, commR);
+	MPI_Exscan(mylocalrowsum, previousrowsum, submatrixsize, MPI_INT, MPI_SUM, commR);
 	
 	// add previous column sum to local submatrix
 	if (myCol > 0) {
-		for (int i = ; i < submatrixsize; i++) {
+		for (int i = 0; i < submatrixsize; i++) {
 			for (int j = 0; j < submatrixsize; j++) {
 				submatrix[i*submatrixsize + j] += previousrowsum[i];
 			}
